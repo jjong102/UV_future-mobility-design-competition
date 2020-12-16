@@ -10,7 +10,7 @@ wheel = 0  #0:stop, 1:left, 2:strait, 3:right
 recording = False
 
 cnt = 0
-outputDir = '/home/jetbot/deep_racer/data/'
+outputDir = '/home/jetbot/uv/data/'
 currentDir = 'training'
 file = ""
 f = ''

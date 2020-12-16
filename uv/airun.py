@@ -66,7 +66,7 @@ if __name__ == '__main__':
    #c.set(cv2.CAP_PROP_FPS, 15)
     cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0), cv2.CAP_GSTREAMER)
     robot = Robot()
-
+    count = 0
 
     while(True):
         _,full_image = cap.read()
@@ -98,13 +98,13 @@ if __name__ == '__main__':
             print('start flag:',start_flag)
    
         #to avoid collision when ultrasonic sensor is available
-        length = 30 #dc.get_distance()
-        if  5 < length and length < 15 and start_flag:
-            hw.motor_one_speed(0)
-            hw.motor_two_speed(0)
-            print('Stop to avoid collision')
-            time.sleep(0.5)
-            continue
+        #length = 30 #dc.get_distance()
+        #if  5 < length and length < 15 and start_flag:
+        #    hw.motor_one_speed(0)
+        #    hw.motor_two_speed(0)
+        #    print('Stop to avoid collision')
+        #    time.sleep(0.5)
+        #    continue
         
         
         if start_flag:
@@ -119,17 +119,21 @@ if __name__ == '__main__':
             elif cfg.wheel == 2:   #Go straight
                 robot.forward(speed=0.4)
                 st += 1
+                count = count - 1
             elif cfg.wheel == 3:   #right turn
                 robot.right(speed=0.28)
                 st += 1
-
-            elif cfg.wheel == 4:   #special case
-               robot.stop()
-               time.sleep(3)
-               robot.forward(speed=0.35)
-               time.sleep(0.7)
-               robot.stop()
-               time.sleep(0.7)
+                
+            elif cfg.wheel == 4:
+                if count < 0:
+                    count = 0
+                    robot.stop()
+                    time.sleep(3)
+                    robot.forward(speed=0.35)
+                    time.sleep(0.7)
+                else:
+                    robot.stop()
+                       
             
             if st % 3 == 0:       # stablity
                 print(st)
