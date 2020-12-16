@@ -13,6 +13,11 @@ python3 keyboard.py
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'&#8592;': 좌회전, '&#8593;': 전진, '&#8594;': 우회전, '&#8595;': 3초 정지 후 출발 
 
-2. 수집된 데이터의 비율를 조정하기 위해 decalcom과 upsampling을 실행 한다.
+2. 수집된 데이터의 비율를 조정하기 위해 decalcom과 upsampling을 실행 한다. 이때 analysis를 사용하여 각 바향에 대한 비율을 적절히 조정한다.
+```
+python3 decalcom
+python3 data_analysis
+python3 data_upsampling
 
+```
 
