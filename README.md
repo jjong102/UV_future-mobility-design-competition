@@ -18,12 +18,12 @@ sudo python3 keyboard.py
 
 
 
-2. 수집된 데이터의 비율를 조정하기 위해 decalcom..py, data_upsampling.py를 실행 한다. 이때 data_analysis.py를 사용하여 각 방향에 대한 비율을 적절히 조정한다.
+2. 수집된 데이터의 비율를 조정하기 위해 decalcom.py, data_upsampling.py를 실행 한다. 이때 data_analysis.py를 사용하여 각 방향에 대한 비율을 적절히 조정한다.
+
 ```
 sudo python3 decalcom
 sudo python3 data_analysis
 sudo python3 data_upsampling
-
 ```
 
 3. train.py를 실행하여 현재 샘플링한 데이터를 기반으로 model을 학습시킨다.
