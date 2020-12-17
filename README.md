@@ -35,3 +35,6 @@ sudo python3 train.py
 ```
 sudo python3 airun.py
 ```
+
+
+*** 이미 학습된 모델이 있으므로 4단계를 실행 하시면 됩니다.
