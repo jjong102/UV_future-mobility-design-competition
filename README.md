@@ -116,48 +116,111 @@ data_csv -->|paths xs[], labels ys[]| dd
 data_imgs -->|image files at xs[]| dd
 cfg -->|read: currentDir, modelheight| dd
 dd -->|batch: x float32[N,66,200,3]/255, y int[N,1]| train
+%%{init: {'flowchart': {'curve': 'step'}} }%%
+flowchart TB
 
-%% Training with model
-train -->|feed: x, y_, keep_prob| model
-model -->|logits y [N,5]| train
-train -->|save variables/graph| ckpt
-train -->|TF summaries: loss, loss_val| logs
+%% Core config
+cfg[uv/UV_config.py]
 
-%% Checkpoint consumers
+%% Data collection / prep
+subgraph Data
+  kb[uv/UV_keyboard.py]
+  d_an[uv/UV_data_analysis.py]
+  d_up[uv/UV_data_upsampling.py]
+  d_dc[uv/UV_decalcom.py]
+  d_del[uv/UV_data_delete.py]
+  data_csv[(data/currentDir/data.csv)]
+  data_imgs[(data/currentDir/*.jpg)]
+  logs[(./logs)]
+end
+
+kb -->|append rows filename and wheel 0..4| data_csv
+kb -->|save image jpg from full_image| data_imgs
+
+cfg -->|read outputDir currentDir| kb
+kb -->|write wheel recording cnt open f and fwriter| cfg
+
+d_an -->|read csv and count classes| data_csv
+cfg -->|read currentDir modelheight| d_an
+
+d_up -->|read csv upsample classes 1..4 append| data_csv
+cfg -->|read currentDir| d_up
+
+d_dc -->|flip images write dc jpg| data_imgs
+d_dc -->|rewrite csv remove dc then append mapped labels| data_csv
+cfg -->|read currentDir use fwriter| d_dc
+
+d_del -->|delete recreate data training and empty csv| data_csv
+d_del -->|delete recreate logs| logs
+
+%% Training
+subgraph Training
+  dd[uv/UV_driving_data.py]
+  model[uv/UV_model.py]
+  train[uv/UV_train.py]
+  ckpt[(save/model.ckpt)]
+end
+
+data_csv -->|xs filenames ys labels| dd
+data_imgs -->|image files by xs| dd
+cfg -->|read currentDir modelheight| dd
+dd -->|batch x 66x200x3 float div255 and y int| train
+
+train -->|feed x y_ keep_prob| model
+model -->|logits y n by 5| train
+train -->|save checkpoint| ckpt
+train -->|write tf summaries loss| logs
+
+%% Evaluation / Visualization
+subgraph Evaluation
+  sim[uv/UV_simulate.py]
+  t_an[uv/UV_train_analysis.py]
+  feat[uv/UV_feature_view.py]
+end
+
 ckpt -->|restore variables| sim
 ckpt -->|restore variables| t_an
 ckpt -->|restore variables| feat
-ckpt -->|restore variables| airun
 
-%% Evaluation / visualization with values
-data_csv -->|filenames, labels| sim
-data_imgs -->|RGB image→[66,200,3]/255| sim
-cfg -->|read: outputDir, currentDir, modelheight| sim
-sim -->|feed: image| model
-model -->|logits y→argmax (pred class)| sim
+data_csv -->|filenames labels| sim
+data_imgs -->|rgb image to 66x200 div255| sim
+cfg -->|read outputDir currentDir modelheight| sim
+sim -->|feed image| model
+model -->|logits argmax predicted class| sim
 
-data_csv -->|filenames, labels| t_an
-data_imgs -->|RGB image→[66,200,3]/255| t_an
-cfg -->|read: outputDir, currentDir, modelheight| t_an
-t_an -->|feed: image| model
-model -->|logits y for accuracy by class| t_an
+data_csv -->|filenames labels| t_an
+data_imgs -->|rgb image to 66x200 div255| t_an
+cfg -->|read outputDir currentDir modelheight| t_an
+t_an -->|feed image| model
+model -->|logits for accuracy by class| t_an
 
 data_csv -->|filenames| feat
-data_imgs -->|RGB image→[66,200,3]/255| feat
-cfg -->|read: outputDir, currentDir, modelheight| feat
-feat -->|feed: image| model
-model -->|h_conv1..4 feature maps, logits y| feat
+data_imgs -->|rgb image to 66x200 div255| feat
+cfg -->|read outputDir currentDir modelheight| feat
+feat -->|feed image| model
+model -->|h_conv feature maps and logits| feat
 
-%% Runtime control with values
-camera -->|frames: BGR 320x240| airun
-airun -->|preprocess: crop cfg.modelheight→[66,200,3]/255| model
-model -->|logits y→softmax/argmax→wheel∈{0..4}| airun
-airun -->|robot.forward/left/right/stop (speed params)| robot
-cfg -->|read: ai_* speeds; write: wheel| airun
+%% Runtime
+subgraph Runtime
+  airun[uv/UV_airun.py]
+  camera[(CSI USB Camera 320x240)]
+  robot[(JetBot Robot)]
+end
 
-%% Optional hardware (commented connections)
-opi -.->|get_distance(): cm float| airun
-xhat -.->|motor_one_speed(speed 0..100)| kb
-xhat -.->|motor_one_speed(speed 0..100)| airun
+camera -->|frames bgr 320x240| airun
+airun -->|crop by modelheight resize 66x200 div255| model
+model -->|logits softmax argmax to wheel| airun
+airun -->|robot forward left right stop| robot
+cfg -->|read ai speed write wheel| airun
+
+%% Optional hardware
+subgraph Hardware
+  xhat[uv/UV_xhat.py]
+  opi[uv/UV_opidistance3.py]
+end
+
+opi -.->|get_distance cm| airun
+xhat -.->|motor_one_speed 0..100| kb
+xhat -.->|motor_one_speed 0..100| airun
 
 ```
