@@ -44,7 +44,7 @@ sudo python3 airun.py
 %%{init: {'flowchart': {'curve': 'step'}} }%%
 flowchart TB
 
-%% Core config
+%% Core config (shared state/params)
 cfg[uv/UV_config.py]
 
 %% Data collection / prep
@@ -59,20 +59,6 @@ subgraph Data
   logs[(./logs)]
 end
 
-kb --> data_csv
-kb --> data_imgs
-d_an --> data_csv
-d_up --> data_csv
-d_dc --> data_csv
-d_dc --> data_imgs
-d_del --> data_csv
-d_del --> logs
-
-kb --> cfg
-d_an --> cfg
-d_up --> cfg
-d_dc --> cfg
-
 %% Training
 subgraph Training
   dd[uv/UV_driving_data.py]
@@ -81,13 +67,6 @@ subgraph Training
   ckpt[(save/model.ckpt)]
 end
 
-data_csv --> dd
-data_imgs --> dd
-dd --> train
-train --> model
-train --> ckpt
-train --> logs
-
 %% Evaluation / Visualization
 subgraph Evaluation
   sim[uv/UV_simulate.py]
@@ -95,38 +74,12 @@ subgraph Evaluation
   feat[uv/UV_feature_view.py]
 end
 
-sim --> model
-t_an --> model
-feat --> model
-
-sim --> ckpt
-t_an --> ckpt
-feat --> ckpt
-
-sim --> data_csv
-t_an --> data_csv
-feat --> data_csv
-
-sim --> data_imgs
-t_an --> data_imgs
-feat --> data_imgs
-
-sim --> cfg
-t_an --> cfg
-feat --> cfg
-
 %% Runtime (Autonomous driving)
 subgraph Runtime
   airun[uv/UV_airun.py]
-  camera[(CSI/USB Camera)]
+  camera[(CSI/USB Camera 320x240)]
   robot[(JetBot Robot)]
 end
-
-airun --> model
-airun --> ckpt
-airun --> camera
-airun --> robot
-airun --> cfg
 
 %% Optional hardware (commented integrations)
 subgraph Hardware
@@ -134,7 +87,77 @@ subgraph Hardware
   opi[uv/UV_opidistance3.py]
 end
 
-airun -.-> opi
-airun -.-> xhat
-kb -.-> xhat
+%% ---------- Data I/O with values on edges ----------
+
+%% Keyboard data collection
+kb -->|append rows: (filename, cfg.wheel ∈ {0,1,2,3,4})| data_csv
+kb -->|save BGR image: full_image→.jpg| data_imgs
+
+%% Config usage by keyboard
+cfg -->|read: outputDir, currentDir| kb
+kb -->|write: wheel, recording, cnt; open: f/fwriter| cfg
+
+%% Data analysis / upsampling / decalcom
+d_an -->|read CSV: filenames, labels; print class counts| data_csv
+cfg -->|read: currentDir, modelheight| d_an
+
+d_up -->|read CSV; upsample classes 1..4; append rows| data_csv
+cfg -->|read: currentDir| d_up
+
+d_dc -->|flip images→write dc_*.jpg| data_imgs
+d_dc -->|rewrite CSV (remove dc_*) + append (dc_name, mapped label 1↔3, 2→2)| data_csv
+cfg -->|read: currentDir; use fwriter| d_dc
+
+d_del -->|delete+recreate training dir + empty CSV| data_csv
+d_del -->|delete+recreate logs dir| logs
+
+%% Driving data loader
+data_csv -->|paths xs[], labels ys[]| dd
+data_imgs -->|image files at xs[]| dd
+cfg -->|read: currentDir, modelheight| dd
+dd -->|batch: x float32[N,66,200,3]/255, y int[N,1]| train
+
+%% Training with model
+train -->|feed: x, y_, keep_prob| model
+model -->|logits y [N,5]| train
+train -->|save variables/graph| ckpt
+train -->|TF summaries: loss, loss_val| logs
+
+%% Checkpoint consumers
+ckpt -->|restore variables| sim
+ckpt -->|restore variables| t_an
+ckpt -->|restore variables| feat
+ckpt -->|restore variables| airun
+
+%% Evaluation / visualization with values
+data_csv -->|filenames, labels| sim
+data_imgs -->|RGB image→[66,200,3]/255| sim
+cfg -->|read: outputDir, currentDir, modelheight| sim
+sim -->|feed: image| model
+model -->|logits y→argmax (pred class)| sim
+
+data_csv -->|filenames, labels| t_an
+data_imgs -->|RGB image→[66,200,3]/255| t_an
+cfg -->|read: outputDir, currentDir, modelheight| t_an
+t_an -->|feed: image| model
+model -->|logits y for accuracy by class| t_an
+
+data_csv -->|filenames| feat
+data_imgs -->|RGB image→[66,200,3]/255| feat
+cfg -->|read: outputDir, currentDir, modelheight| feat
+feat -->|feed: image| model
+model -->|h_conv1..4 feature maps, logits y| feat
+
+%% Runtime control with values
+camera -->|frames: BGR 320x240| airun
+airun -->|preprocess: crop cfg.modelheight→[66,200,3]/255| model
+model -->|logits y→softmax/argmax→wheel∈{0..4}| airun
+airun -->|robot.forward/left/right/stop (speed params)| robot
+cfg -->|read: ai_* speeds; write: wheel| airun
+
+%% Optional hardware (commented connections)
+opi -.->|get_distance(): cm float| airun
+xhat -.->|motor_one_speed(speed 0..100)| kb
+xhat -.->|motor_one_speed(speed 0..100)| airun
+
 ```
