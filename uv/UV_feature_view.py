@@ -1,12 +1,12 @@
 import tensorflow as tf
 import scipy.misc
-import model
+import uv.UV_model as UV_model
 import cv2
 from subprocess import call
 import time
 import csv
 import numpy as np
-import config as cfg
+import uv.UV_config as cfg
 import matplotlib.pyplot as plt
 
 sess = tf.InteractiveSession()
@@ -38,9 +38,9 @@ while(cv2.waitKey(10) != ord('q')):
     full_image = scipy.misc.imread('data/' + cfg.currentDir + '/' + xs[i] , mode="RGB")
     image = scipy.misc.imresize(full_image[cfg.modelheight:], [66, 200]) / 255.0
     
-    degrees = model.y.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    degrees = UV_model.y.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
 
-    image1 = model.h_conv1.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    image1 = UV_model.h_conv1.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
     flat1 = np.reshape(image1, [-1, 72912])*255
     flat1 = np.reshape(flat1.astype(np.uint8), (31,98,24))
 
@@ -48,15 +48,15 @@ while(cv2.waitKey(10) != ord('q')):
     #print(full_image.shape, full_image.dtype)
     #print(flat2[0,2,0])
 
-    image2 = model.h_conv2.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    image2 = UV_model.h_conv2.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
     flat2 = np.reshape(image2, [-1, 23688])*255
     flat2 = np.reshape(flat2.astype(np.uint8), (14,47,36))
       
-    image3 = model.h_conv3.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    image3 = UV_model.h_conv3.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
     flat3 = np.reshape(image3, [-1, 5280])*255
     flat3 = np.reshape(flat3.astype(np.uint8), (5,22,48))
     
-    image4 = model.h_conv4.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    image4 = UV_model.h_conv4.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
     flat4 = np.reshape(image4, [-1, 3840])*255
     flat4 = np.reshape(flat4.astype(np.uint8), (3,20,64))
     

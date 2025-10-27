@@ -6,7 +6,7 @@ import PIL.Image
 #import xhat as hw
 import time
 import cv2
-import config as cfg
+import uv.UV_config as cfg
 
 import os
 import sys

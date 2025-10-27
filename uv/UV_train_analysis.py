@@ -1,12 +1,12 @@
 import tensorflow as tf
 import scipy.misc
-import model
+import uv.UV_model as UV_model
 import cv2
 from subprocess import call
 import time
 import csv
 import numpy as np
-import config as cfg
+import uv.UV_config as cfg
 
 sess = tf.InteractiveSession()
 saver = tf.train.Saver()
@@ -43,7 +43,7 @@ while(True):
     full_image = scipy.misc.imread('data/' + cfg.currentDir + '/' + xs[i] , mode="RGB")
     image = scipy.misc.imresize(full_image[cfg.modelheight:], [66, 200]) / 255.0
     
-    degrees = model.y.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    degrees = UV_model.y.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
 
     if int(ys[i]) == np.argmax(degrees, axis=1):
         correct_num += 1

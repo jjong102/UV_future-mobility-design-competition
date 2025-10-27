@@ -1,8 +1,8 @@
 import os
 import tensorflow as tf
 from tensorflow.core.protobuf import saver_pb2
-import driving_data
-import model
+import uv.UV_driving_data as UV_driving_data
+import uv.UV_model as UV_model
 import numpy as np
 import time
 
@@ -21,13 +21,13 @@ train_vars = tf.trainable_variables()
 start_learning_rate = 0.5e-3    ###1e-3
 adjust_learning_rate = 1e-5
 
-onehot_labels = tf.one_hot(indices=tf.reshape(tf.cast(model.y_, tf.int32),[-1]), depth=4)
+onehot_labels = tf.one_hot(indices=tf.reshape(tf.cast(UV_model.y_, tf.int32),[-1]), depth=4)
 
-loss = tf.losses.softmax_cross_entropy( onehot_labels=onehot_labels, logits=model.y)
+loss = tf.losses.softmax_cross_entropy( onehot_labels=onehot_labels, logits=UV_model.y)
 #loss = tf.nn.softmax_cross_entropy_with_logits_v2( labels=onehot_labels, logits=model.y)
 train_step = tf.train.AdamOptimizer(start_learning_rate).minimize(loss)
 
-loss_val = tf.losses.softmax_cross_entropy( onehot_labels=onehot_labels, logits=model.y)
+loss_val = tf.losses.softmax_cross_entropy( onehot_labels=onehot_labels, logits=UV_model.y)
 #loss_val = tf.nn.softmax_cross_entropy_with_logits_v2( labels=onehot_labels, logits=model.y)
 #train_step = tf.train.AdamOptimizer(start_learning_rate).minimize(loss)
 
@@ -56,25 +56,25 @@ batch_size = 100
 
 # train over the dataset about 30 times
 for epoch in range(epochs):
-  for i in range(int(driving_data.num_images/batch_size)):
-    xs, ys = driving_data.LoadTrainBatch(batch_size)
+  for i in range(int(UV_driving_data.num_images/batch_size)):
+    xs, ys = UV_driving_data.LoadTrainBatch(batch_size)
     ###train_step.run(feed_dict={model.x: xs, model.y_: ys, model.keep_prob: 0.8})
-    train_step.run(feed_dict={model.x: xs, model.y_: ys, model.keep_prob: 0.7})
-    loss_value = loss.eval(feed_dict={model.x: xs, model.y_: ys, model.keep_prob: 1.0})
+    train_step.run(feed_dict={UV_model.x: xs, UV_model.y_: ys, UV_model.keep_prob: 0.7})
+    loss_value = loss.eval(feed_dict={UV_model.x: xs, UV_model.y_: ys, UV_model.keep_prob: 1.0})
     #print("Epoch: %d, Step: %d, Loss: %g" % (epoch, epoch * batch_size + i, loss_value))
     print("Epoch: %d, Step: %d, Loss: %g" % (epoch, i, loss_value))
 
 
     if i % 10 == 0:
-      xs_val, ys_val = driving_data.LoadValBatch(batch_size)
+      xs_val, ys_val = UV_driving_data.LoadValBatch(batch_size)
       ###xs, ys = driving_data.LoadTrainBatch(batch_size)
-      loss_val = loss.eval(feed_dict={model.x:xs_val, model.y_: ys_val, model.keep_prob: 1.0})
+      loss_val = loss.eval(feed_dict={UV_model.x:xs_val, UV_model.y_: ys_val, UV_model.keep_prob: 1.0})
       print("Epoch: %d, Step: %d, Loss_val: %g" % (epoch, i, loss_val))
 
 
     # write logs at every iteration
-    summary = merged_summary_op.eval(feed_dict={model.x:xs, model.y_: ys, model.keep_prob: 1.0})
-    summary_writer.add_summary(summary, epoch * driving_data.num_images/batch_size + i)
+    summary = merged_summary_op.eval(feed_dict={UV_model.x:xs, UV_model.y_: ys, UV_model.keep_prob: 1.0})
+    summary_writer.add_summary(summary, epoch * UV_driving_data.num_images/batch_size + i)
 
     if i % batch_size == 0:
       if not os.path.exists(LOGDIR):
@@ -84,11 +84,11 @@ for epoch in range(epochs):
       print("Model saved in file: %s" % filename)
 
 
-correct_prediction = tf.equal(tf.argmax(onehot_labels, 1), tf.argmax(model.y, 1))
+correct_prediction = tf.equal(tf.argmax(onehot_labels, 1), tf.argmax(UV_model.y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-print('Train Accuracy:', sess.run(accuracy, feed_dict={model.x: xs, model.y_: ys, model.keep_prob: 1.0}))
-print('Validation Accuracy:', sess.run(accuracy, feed_dict={model.x: xs_val, model.y_: ys_val, model.keep_prob: 1.0}))
+print('Train Accuracy:', sess.run(accuracy, feed_dict={UV_model.x: xs, UV_model.y_: ys, UV_model.keep_prob: 1.0}))
+print('Validation Accuracy:', sess.run(accuracy, feed_dict={UV_model.x: xs_val, UV_model.y_: ys_val, UV_model.keep_prob: 1.0}))
 
 end = time.strftime('%Y-%m-%d_%H-%M-%S')
 print('begin: ', begin)

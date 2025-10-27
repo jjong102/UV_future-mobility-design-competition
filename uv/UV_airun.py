@@ -1,14 +1,13 @@
-#airun.py
 
 #import xhat as hw
 import time
 import cv2
-import config as cfg
+import uv.UV_config as cfg
 #import opidistance3 as dc
 import tensorflow as tf
 import scipy.misc
 import numpy as np
-import model
+import uv.UV_model as UV_model
 from jetbot import Robot
 
 import os
@@ -81,10 +80,10 @@ if __name__ == '__main__':
         cv2.imshow("view of AI", image1)
 
         
-        wheel = model.y.eval(session=sess,feed_dict={model.x: [image], model.keep_prob: 1.0})
+        wheel = UV_model.y.eval(session=sess,feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
         cfg.wheel = np.argmax(wheel, axis=1)
         #print('wheel value:', cfg.wheel, wheel)
-        print('wheel value:', cfg.wheel, model.softmax(wheel))
+        print('wheel value:', cfg.wheel, UV_model.softmax(wheel))
 
     
         k = cv2.waitKey(5)

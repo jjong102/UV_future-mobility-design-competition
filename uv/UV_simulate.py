@@ -1,12 +1,12 @@
 import tensorflow as tf
 import scipy.misc
-import model
+import uv.UV_model as UV_model
 import cv2
 from subprocess import call
 import time
 import csv
 import numpy as np
-import config as cfg
+import uv.UV_config as cfg
 
 sess = tf.InteractiveSession()
 saver = tf.train.Saver()
@@ -33,7 +33,7 @@ while(cv2.waitKey(10) != ord('q')):
     
     image1 = scipy.misc.imresize(full_image[cfg.modelheight:], [66*3, 200*3])
     
-    degrees = model.y.eval(feed_dict={model.x: [image], model.keep_prob: 1.0})
+    degrees = UV_model.y.eval(feed_dict={UV_model.x: [image], UV_model.keep_prob: 1.0})
     ###print("Label y: " + ys[i], 'prediced value:', np.argmax(degrees, axis=1),degrees)
     print("Label y: " + ys[i], 'prediced value:', np.argmax(degrees, axis=1))
     cv2.imshow("Feed", cv2.cvtColor(image1, cv2.COLOR_RGB2BGR))

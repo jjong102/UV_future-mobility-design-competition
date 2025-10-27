@@ -1,7 +1,7 @@
 import random
 import csv
 import numpy as np
-import config as cfg
+import uv.UV_config as cfg
 
 x1 = []
 #y1 = []

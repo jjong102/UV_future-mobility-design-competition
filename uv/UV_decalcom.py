@@ -4,7 +4,7 @@ import random
 import csv
 #from mlxtend.preprocessing import one_hot
 import numpy as np
-import config as cfg
+import uv.UV_config as cfg
 
 
 #delete dc_img* in data.csv file

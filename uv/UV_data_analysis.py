@@ -4,10 +4,16 @@ import random
 import csv
 #from mlxtend.preprocessing import one_hot
 import numpy as np
-import config as cfg
+import uv.UV_config as cfg
 
 xs = []
 ys = []
+
+wheel0 = 0
+wheel1 = 0
+wheel2 = 0
+wheel3 = 0
+wheel4 = 0
 
 #points to the end of the last batch
 train_batch_pointer = 0
@@ -20,6 +26,26 @@ with open('data/' + cfg.currentDir + '/data.csv', newline='') as csvfile:
         #print(row[0], row[1])
         xs.append('data/' + cfg.currentDir + '/' + row[0])
         ys.append(int(row[1]))
+        if int(row[1]) == 0:
+            wheel0 += 1
+        elif int(row[1]) == 1:
+            wheel1 += 1
+        elif int(row[1]) == 2:
+            wheel2 += 1
+        elif int(row[1]) == 3:
+            wheel3 += 1
+        elif int(row[1]) == 4:
+            wheel4 += 1
+	
+
+print('Total data counts: ', len(xs))
+print('Stop data counts: ', wheel0, ', ratio(%):', ' %0.1f' % (wheel0/len(xs)*100))
+print('Left data counts: ', wheel1, ', ratio(%):', ' %0.1f' % (wheel1/len(xs)*100))
+print('strait data counts: ', wheel2, ', ratio(%):', ' %0.1f' % (wheel2/len(xs)*100))
+print('Right data counts: ', wheel3, ', ratio(%):', ' %0.1f' % (wheel3/len(xs)*100))
+print('special data counts: ', wheel4,', ratio(%):', ' %0.1f' % ( wheel4/len(xs)*100))
+
+
 
 ###ys = one_hot(ys, num_labels=4, dtype='int')
 
@@ -33,7 +59,7 @@ num_images = len(xs)
 c = list(zip(xs, ys))
 random.shuffle(c)
 xs, ys = zip(*c)
-"""
+
 train_xs = xs[:int(len(xs) * 0.8)]
 train_ys = ys[:int(len(xs) * 0.8)]
 
@@ -46,7 +72,7 @@ train_ys = ys[:int(len(xs) * 1)]
 
 val_xs = xs[-int(len(xs) * 1):]
 val_ys = ys[-int(len(xs) * 1):]
-
+"""
 
 num_train_images = len(train_xs)
 num_val_images = len(val_xs)
