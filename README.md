@@ -41,7 +41,7 @@ sudo python3 airun.py
 
 ## 코드 구조
 ```mermaid
-%%{init: {"flowchart": {"curve": "step"}} }%%
+%%{init: {"flowchart": {"curve": "linear"}} }%%
 flowchart TB
 
 %% ================ Core config ================
@@ -155,4 +155,5 @@ cfg -->|read ai_speed, write wheel| airun
 opi -.->|get distance cm| airun
 xhat -.->|motor_one_speed 0..100| kb
 xhat -.->|motor_one_speed 0..100| airun
+
 ```
