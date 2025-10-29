@@ -41,13 +41,13 @@ sudo python3 airun.py
 
 ## 코드 구조
 ```mermaid
-%%{init: {'flowchart': {'curve': 'step'}} }%%
+%%{init: {"flowchart": {"curve": "step"}} }%%
 flowchart TB
 
-%% ================= Core config =================
+%% ================ Core config ================
 cfg[uv/UV_config.py]
 
-%% ================= Data =================
+%% ==================== Data ====================
 subgraph Data
   kb[uv/UV_keyboard.py]
   d_an[uv/UV_data_analysis.py]
@@ -59,7 +59,7 @@ subgraph Data
   logs[(./logs)]
 end
 
-%% ================= Training =================
+%% ================== Training ==================
 subgraph Training
   dd[uv/UV_driving_data.py]
   model[uv/UV_model.py]
@@ -67,96 +67,92 @@ subgraph Training
   ckpt[(save/model.ckpt)]
 end
 
-%% ============== Evaluation / Visualization ==============
+%% ========= Evaluation / Visualization =========
 subgraph Evaluation
   sim[uv/UV_simulate.py]
   t_an[uv/UV_train_analysis.py]
   feat[uv/UV_feature_view.py]
 end
 
-%% ================= Runtime =================
+%% ================== Runtime ===================
 subgraph Runtime
   airun[uv/UV_airun.py]
   camera[(CSI/USB Camera 320x240)]
   robot[(JetBot Robot)]
 end
 
-%% ============== Optional Hardware ==============
+%% ============== Optional Hardware =============
 subgraph Hardware
   xhat[uv/UV_xhat.py]
   opi[uv/UV_opidistance3.py]
 end
 
-%% ----------- Data I/O (labels kept simple) -----------
 
-%% Keyboard data collection
-kb -->|append rows: filename, wheel in 0..4| data_csv
-kb -->|save BGR image to .jpg| data_imgs
+%% -------- Data collection / prep --------
+cfg -->|read outputDir, currentDir| kb
+kb -->|append rows: filename, wheel 0..4| data_csv
+kb -->|save BGR image to jpg| data_imgs
+kb -->|write wheel, recording, cnt| cfg
 
-%% Config usage by keyboard
-cfg -->|read: outputDir, currentDir| kb
-kb -->|write: wheel, recording, cnt; open: f/fwriter| cfg
+d_an -->|read csv, count classes| data_csv
+cfg -->|read currentDir, modelheight| d_an
 
-%% Data analysis / upsampling / decalcom
-d_an -->|read csv; count classes| data_csv
-cfg -->|read: currentDir, modelheight| d_an
+d_up -->|read csv, upsample 1..4, append| data_csv
+cfg -->|read currentDir| d_up
 
-d_up -->|read csv; upsample 1..4; append| data_csv
-cfg -->|read: currentDir| d_up
+d_dc -->|flip images, write dc_*.jpg| data_imgs
+d_dc -->|rewrite csv: remove dc_*, append mapped labels| data_csv
+cfg -->|read currentDir, use writer| d_dc
 
-d_dc -->|flip images; write dc_*.jpg| data_imgs
-d_dc -->|rewrite csv: remove dc_*; append mapped labels| data_csv
-cfg -->|read: currentDir; use fwriter| d_dc
-
-d_del -->|recreate data/training; empty csv| data_csv
+d_del -->|recreate data dirs, empty csv| data_csv
 d_del -->|recreate logs| logs
 
-%% Driving data loader
-data_csv -->|xs: filenames; ys: labels| dd
-data_imgs -->|images at xs| dd
-cfg -->|read: currentDir, modelheight| dd
-dd -->|batch: x[66x200x3]/255, y[int]| train
 
-%% Training flow
-train -->|feed x,y, keep_prob| model
-model -->|logits: N x 5| train
+%% ------------- Training pipeline -------------
+data_csv -->|xs filenames, ys labels| dd
+data_imgs -->|images by xs| dd
+cfg -->|read currentDir, modelheight| dd
+dd -->|batch: x 66x200x3 div255, y int| train
+
+train -->|feed x, y, keep_prob| model
+model -->|logits N by 5| train
 train -->|save checkpoint| ckpt
-train -->|tf summaries: loss| logs
+train -->|write summaries loss| logs
 
-%% Evaluation / Visualization
+
+%% -------- Evaluation / Visualization --------
 ckpt -->|restore| sim
 ckpt -->|restore| t_an
 ckpt -->|restore| feat
 
 data_csv -->|filenames, labels| sim
-data_imgs -->|rgb -> 66x200 -> /255| sim
-cfg -->|read: outputDir, currentDir, modelheight| sim
+data_imgs -->|rgb to 66x200, div255| sim
+cfg -->|read outputDir, currentDir, modelheight| sim
 sim -->|feed image| model
-model -->|argmax -> pred class| sim
+model -->|argmax to class| sim
 
 data_csv -->|filenames, labels| t_an
-data_imgs -->|rgb -> 66x200 -> /255| t_an
-cfg -->|read: outputDir, currentDir, modelheight| t_an
+data_imgs -->|rgb to 66x200, div255| t_an
+cfg -->|read outputDir, currentDir, modelheight| t_an
 t_an -->|feed image| model
-model -->|logits -> per-class acc| t_an
+model -->|per class accuracy| t_an
 
 data_csv -->|filenames only| feat
-data_imgs -->|rgb -> 66x200 -> /255| feat
-cfg -->|read: outputDir, currentDir, modelheight| feat
+data_imgs -->|rgb to 66x200, div255| feat
+cfg -->|read outputDir, currentDir, modelheight| feat
 feat -->|feed image| model
-model -->|feature maps + logits| feat
+model -->|feature maps and logits| feat
 
-%% Runtime
-camera -->|frames: BGR 320x240| airun
-airun -->|crop by modelheight; resize 66x200; /255| model
-model -->|softmax/argmax -> wheel| airun
-airun -->|robot cmd: fwd/left/right/stop| robot
-cfg -->|read ai_speed; write wheel| airun
 
-%% Optional hardware
-opi -.->|get_distance (cm)| airun
+%% ----------------- Runtime -------------------
+camera -->|frames BGR 320x240| airun
+airun -->|crop by modelheight, resize 66x200, div255| model
+model -->|softmax argmax to wheel| airun
+airun -->|robot cmd fwd left right stop| robot
+cfg -->|read ai_speed, write wheel| airun
+
+%% ------------- Optional hardware -------------
+opi -.->|get distance cm| airun
 xhat -.->|motor_one_speed 0..100| kb
 xhat -.->|motor_one_speed 0..100| airun
-
-
 ```
