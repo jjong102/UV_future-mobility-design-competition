@@ -44,85 +44,10 @@ sudo python3 airun.py
 %%{init: {'flowchart': {'curve': 'step'}} }%%
 flowchart TB
 
-%% Core config (shared state/params)
+%% ================= Core config =================
 cfg[uv/UV_config.py]
 
-%% Data collection / prep
-subgraph Data
-  kb[uv/UV_keyboard.py]
-  d_an[uv/UV_data_analysis.py]
-  d_up[uv/UV_data_upsampling.py]
-  d_dc[uv/UV_decalcom.py]
-  d_del[uv/UV_data_delete.py]
-  data_csv[(data/<currentDir>/data.csv)]
-  data_imgs[(data/<currentDir>/*.jpg)]
-  logs[(./logs)]
-end
-
-%% Training
-subgraph Training
-  dd[uv/UV_driving_data.py]
-  model[uv/UV_model.py]
-  train[uv/UV_train.py]
-  ckpt[(save/model.ckpt)]
-end
-
-%% Evaluation / Visualization
-subgraph Evaluation
-  sim[uv/UV_simulate.py]
-  t_an[uv/UV_train_analysis.py]
-  feat[uv/UV_feature_view.py]
-end
-
-%% Runtime (Autonomous driving)
-subgraph Runtime
-  airun[uv/UV_airun.py]
-  camera[(CSI/USB Camera 320x240)]
-  robot[(JetBot Robot)]
-end
-
-%% Optional hardware (commented integrations)
-subgraph Hardware
-  xhat[uv/UV_xhat.py]
-  opi[uv/UV_opidistance3.py]
-end
-
-%% ---------- Data I/O with values on edges ----------
-
-%% Keyboard data collection
-kb -->|append rows: (filename, cfg.wheel ∈ {0,1,2,3,4})| data_csv
-kb -->|save BGR image: full_image→.jpg| data_imgs
-
-%% Config usage by keyboard
-cfg -->|read: outputDir, currentDir| kb
-kb -->|write: wheel, recording, cnt; open: f/fwriter| cfg
-
-%% Data analysis / upsampling / decalcom
-d_an -->|read CSV: filenames, labels; print class counts| data_csv
-cfg -->|read: currentDir, modelheight| d_an
-
-d_up -->|read CSV; upsample classes 1..4; append rows| data_csv
-cfg -->|read: currentDir| d_up
-
-d_dc -->|flip images→write dc_*.jpg| data_imgs
-d_dc -->|rewrite CSV (remove dc_*) + append (dc_name, mapped label 1↔3, 2→2)| data_csv
-cfg -->|read: currentDir; use fwriter| d_dc
-
-d_del -->|delete+recreate training dir + empty CSV| data_csv
-d_del -->|delete+recreate logs dir| logs
-
-%% Driving data loader
-data_csv -->|paths xs[], labels ys[]| dd
-data_imgs -->|image files at xs[]| dd
-cfg -->|read: currentDir, modelheight| dd
-dd -->|batch: x float32[N,66,200,3]/255, y int[N,1]| train
-%%{init: {'flowchart': {'curve': 'step'}} }%%
-flowchart TB
-
-%% Core config
-cfg[uv/UV_config.py]
-
-%% Data collection / prep
+%% ================= Data =================
 subgraph Data
   kb[uv/UV_keyboard.py]
   d_an[uv/UV_data_analysis.py]
@@ -134,26 +59,7 @@ subgraph Data
   logs[(./logs)]
 end
 
-kb -->|append rows filename and wheel 0..4| data_csv
-kb -->|save image jpg from full_image| data_imgs
-
-cfg -->|read outputDir currentDir| kb
-kb -->|write wheel recording cnt open f and fwriter| cfg
-
-d_an -->|read csv and count classes| data_csv
-cfg -->|read currentDir modelheight| d_an
-
-d_up -->|read csv upsample classes 1..4 append| data_csv
-cfg -->|read currentDir| d_up
-
-d_dc -->|flip images write dc jpg| data_imgs
-d_dc -->|rewrite csv remove dc then append mapped labels| data_csv
-cfg -->|read currentDir use fwriter| d_dc
-
-d_del -->|delete recreate data training and empty csv| data_csv
-d_del -->|delete recreate logs| logs
-
-%% Training
+%% ================= Training =================
 subgraph Training
   dd[uv/UV_driving_data.py]
   model[uv/UV_model.py]
@@ -161,66 +67,96 @@ subgraph Training
   ckpt[(save/model.ckpt)]
 end
 
-data_csv -->|xs filenames ys labels| dd
-data_imgs -->|image files by xs| dd
-cfg -->|read currentDir modelheight| dd
-dd -->|batch x 66x200x3 float div255 and y int| train
-
-train -->|feed x y_ keep_prob| model
-model -->|logits y n by 5| train
-train -->|save checkpoint| ckpt
-train -->|write tf summaries loss| logs
-
-%% Evaluation / Visualization
+%% ============== Evaluation / Visualization ==============
 subgraph Evaluation
   sim[uv/UV_simulate.py]
   t_an[uv/UV_train_analysis.py]
   feat[uv/UV_feature_view.py]
 end
 
-ckpt -->|restore variables| sim
-ckpt -->|restore variables| t_an
-ckpt -->|restore variables| feat
-
-data_csv -->|filenames labels| sim
-data_imgs -->|rgb image to 66x200 div255| sim
-cfg -->|read outputDir currentDir modelheight| sim
-sim -->|feed image| model
-model -->|logits argmax predicted class| sim
-
-data_csv -->|filenames labels| t_an
-data_imgs -->|rgb image to 66x200 div255| t_an
-cfg -->|read outputDir currentDir modelheight| t_an
-t_an -->|feed image| model
-model -->|logits for accuracy by class| t_an
-
-data_csv -->|filenames| feat
-data_imgs -->|rgb image to 66x200 div255| feat
-cfg -->|read outputDir currentDir modelheight| feat
-feat -->|feed image| model
-model -->|h_conv feature maps and logits| feat
-
-%% Runtime
+%% ================= Runtime =================
 subgraph Runtime
   airun[uv/UV_airun.py]
-  camera[(CSI USB Camera 320x240)]
+  camera[(CSI/USB Camera 320x240)]
   robot[(JetBot Robot)]
 end
 
-camera -->|frames bgr 320x240| airun
-airun -->|crop by modelheight resize 66x200 div255| model
-model -->|logits softmax argmax to wheel| airun
-airun -->|robot forward left right stop| robot
-cfg -->|read ai speed write wheel| airun
-
-%% Optional hardware
+%% ============== Optional Hardware ==============
 subgraph Hardware
   xhat[uv/UV_xhat.py]
   opi[uv/UV_opidistance3.py]
 end
 
-opi -.->|get_distance cm| airun
+%% ----------- Data I/O (labels kept simple) -----------
+
+%% Keyboard data collection
+kb -->|append rows: filename, wheel in 0..4| data_csv
+kb -->|save BGR image to .jpg| data_imgs
+
+%% Config usage by keyboard
+cfg -->|read: outputDir, currentDir| kb
+kb -->|write: wheel, recording, cnt; open: f/fwriter| cfg
+
+%% Data analysis / upsampling / decalcom
+d_an -->|read csv; count classes| data_csv
+cfg -->|read: currentDir, modelheight| d_an
+
+d_up -->|read csv; upsample 1..4; append| data_csv
+cfg -->|read: currentDir| d_up
+
+d_dc -->|flip images; write dc_*.jpg| data_imgs
+d_dc -->|rewrite csv: remove dc_*; append mapped labels| data_csv
+cfg -->|read: currentDir; use fwriter| d_dc
+
+d_del -->|recreate data/training; empty csv| data_csv
+d_del -->|recreate logs| logs
+
+%% Driving data loader
+data_csv -->|xs: filenames; ys: labels| dd
+data_imgs -->|images at xs| dd
+cfg -->|read: currentDir, modelheight| dd
+dd -->|batch: x[66x200x3]/255, y[int]| train
+
+%% Training flow
+train -->|feed x,y, keep_prob| model
+model -->|logits: N x 5| train
+train -->|save checkpoint| ckpt
+train -->|tf summaries: loss| logs
+
+%% Evaluation / Visualization
+ckpt -->|restore| sim
+ckpt -->|restore| t_an
+ckpt -->|restore| feat
+
+data_csv -->|filenames, labels| sim
+data_imgs -->|rgb -> 66x200 -> /255| sim
+cfg -->|read: outputDir, currentDir, modelheight| sim
+sim -->|feed image| model
+model -->|argmax -> pred class| sim
+
+data_csv -->|filenames, labels| t_an
+data_imgs -->|rgb -> 66x200 -> /255| t_an
+cfg -->|read: outputDir, currentDir, modelheight| t_an
+t_an -->|feed image| model
+model -->|logits -> per-class acc| t_an
+
+data_csv -->|filenames only| feat
+data_imgs -->|rgb -> 66x200 -> /255| feat
+cfg -->|read: outputDir, currentDir, modelheight| feat
+feat -->|feed image| model
+model -->|feature maps + logits| feat
+
+%% Runtime
+camera -->|frames: BGR 320x240| airun
+airun -->|crop by modelheight; resize 66x200; /255| model
+model -->|softmax/argmax -> wheel| airun
+airun -->|robot cmd: fwd/left/right/stop| robot
+cfg -->|read ai_speed; write wheel| airun
+
+%% Optional hardware
+opi -.->|get_distance (cm)| airun
 xhat -.->|motor_one_speed 0..100| kb
 xhat -.->|motor_one_speed 0..100| airun
+
 
 ```
